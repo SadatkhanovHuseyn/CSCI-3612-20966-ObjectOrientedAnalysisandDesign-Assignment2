@@ -5,10 +5,10 @@ import java.util.List;
 
 public class RingBuffer<T> {
     private final Object[] buffer;
-    public final int capacity;
-    public final Object lock = new Object(); // Added missing lock
+    public final int capacity; // Reader.java needs this as a field
+    public final Object lock = new Object(); // Reader.java needs this for synchronization
     private long writeSequence = 0;
-    private final List<Reader<T>> readers = new ArrayList<>(); // Changed name
+    private final List<Reader<T>> readers = new ArrayList<>();
 
     public RingBuffer(int capacity) {
         this.capacity = capacity;
@@ -22,13 +22,13 @@ public class RingBuffer<T> {
     }
 
     public synchronized Reader<T> createReader() {
-        // Updated to match Reader.java constructor: (buffer, startSeq, name, delay)
+        // Matches Reader.java constructor: buffer, startSeq, name, delay
         Reader<T> reader = new Reader<>(this, 0, "Reader-" + readers.size(), 100);
         readers.add(reader);
         return reader;
     }
 
-    // Missing methods required by Reader.java
+    // These methods are called by Reader.java
     public long oldestAvailableSeqUnsafe() {
         return Math.max(0, writeSequence - capacity);
     }
@@ -42,6 +42,6 @@ public class RingBuffer<T> {
     }
 
     public String debugRing() {
-        return "Buffer Status: " + writeSequence + " items written";
+        return "Buffer usage: " + (writeSequence % capacity) + "/" + capacity;
     }
 }
