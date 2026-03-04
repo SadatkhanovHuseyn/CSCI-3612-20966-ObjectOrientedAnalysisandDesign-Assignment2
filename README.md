@@ -1,4 +1,4 @@
-# Ring Buffer (Single Writer, Multiple Readers)
+# Ring Buffer
 
 ## Project Overview
 This project is a Java implementation of a **fixed-capacity circular (ring) buffer** designed for a **single writer** and **multiple independent readers**.
