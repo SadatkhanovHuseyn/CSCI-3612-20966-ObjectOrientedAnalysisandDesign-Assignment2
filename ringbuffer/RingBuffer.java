@@ -45,3 +45,4 @@ public class RingBuffer<T> {
         return "Buffer usage: " + (writeSequence % capacity) + "/" + capacity;
     }
 }
+
