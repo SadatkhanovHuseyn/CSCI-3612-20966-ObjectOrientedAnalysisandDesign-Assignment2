@@ -119,3 +119,4 @@ classDiagram
   Writer --> RingBuffer~Integer~ : writes to
   Main --> RingBuffer~String~ : demo
   Main --> Reader~String~ : demo reads
+
