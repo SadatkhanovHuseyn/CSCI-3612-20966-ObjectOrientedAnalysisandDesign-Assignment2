@@ -1,122 +1,83 @@
 # Ring Buffer
 
 ## Project Overview
-This project is a Java implementation of a **fixed-capacity circular (ring) buffer** designed for a **single writer** and **multiple independent readers**.
+This project implements a **Circular (Ring) Buffer** in Java designed for a **Single Writer and Multiple Readers**.
 
-- The buffer holds up to **N** items.
-- A **single writer** appends items using `write()`.
-- Multiple readers can be created via `createReader()`.
-- **Each reader has its own read position** (independent consumption).
-- Reads are **non-destructive**: one reader reading an item does not remove it for others.
-- When the buffer is full, the writer **overwrites the oldest data** (no blocking).
-- If a reader is too slow and its target data was overwritten, it **skips forward** to the **oldest available** item (lapping/overwrite handling).
+Key characteristics:
 
----
-
-## How It Works (High-Level)
-The ring buffer stores items in an array and tracks a monotonically increasing `writeSequence`:
-
-- The array index for a written item is:  
-  `index = writeSequence % capacity`
-- The **oldest available** sequence is:  
-  `oldestAvailable = max(0, writeSequence - capacity)`
-
-Each reader tracks `nextSeqToRead`. On `read()`:
-
-1. Compute `oldestAvailable` and current `writeSequence`.
-2. If `nextSeqToRead < oldestAvailable`, the reader **missed data** (it was overwritten), so it jumps to `oldestAvailable`.
-3. If `nextSeqToRead >= writeSequence`, there is nothing new to read → returns `Optional.empty()`.
-4. Otherwise, read the element at `nextSeqToRead`, increment it, return `Optional.of(item)`.
+- The buffer has a **fixed capacity (N)**.
+- Only **one writer** can write to the buffer.
+- Multiple readers can read **independently**.
+- Each reader maintains its **own reading position**.
+- Reading **does not remove data** from the buffer.
+- When the buffer becomes full, **new data overwrites the oldest data**.
+- Slow readers may **miss overwritten data** and will automatically continue from the oldest available element.
 
 ---
 
-## Design (OO Responsibilities)
+## Design and Responsibilities
 
 ### `RingBuffer<T>`
-**Responsibility:** Owns the storage and write-side sequencing.
-- Stores the underlying `Object[] buffer`
-- Holds `capacity` and a `writeSequence`
-- Provides:
-  - `write(T item)` → write/overwrite into ring
-  - `createReader()` → factory for `Reader<T>`
-  - helpers used by readers:
-    - `oldestAvailableSeqUnsafe()`
-    - `writeSeqUnsafe()`
-    - `getAtSeqUnsafe(long seq)`
-  - `debugRing()` → quick buffer state string
+Responsible for managing the buffer storage and write operations.
 
-### `Reader<T>` (implements `Runnable`)
-**Responsibility:** Represents an independent consumer cursor over the buffer.
-- Holds `nextSeqToRead` (per-reader position)
-- `read()` returns `Optional<T>`
-- Implements lapping logic (skip to oldest available if overwritten)
-- `run()` shows an example continuous reader loop (poll + sleep + log)
+Responsibilities:
+- Stores the circular array (`Object[] buffer`)
+- Maintains `writeSequence`
+- Handles writing new data
+- Creates readers using `createReader()`
+- Provides helper methods for readers to access data
 
-### `Writer` (implements `Runnable`)
-**Responsibility:** Example producer that continuously writes incrementing values.
-- Demonstrates continuous publishing into the ring buffer
-
-### `Main`
-**Responsibility:** Simple deterministic demo (write a few items, read with two readers).
-
-### `ReaderStart` (enum)
-**Responsibility:** Declares possible reader start policies (e.g., “from now” vs “from oldest available”).  
-*(Included for extension/clarity; can be wired into `createReader()` to choose start behavior.)*
+Main methods:
+- `write(T item)`
+- `createReader()`
+- `oldestAvailableSeqUnsafe()`
+- `writeSeqUnsafe()`
+- `getAtSeqUnsafe(long sequence)`
 
 ---
 
-## UML Class Diagram (Mermaid)
-```mermaid
-classDiagram
-  direction LR
+### `Reader<T>`
+Represents an **independent consumer** of the ring buffer.
 
-  class RingBuffer~T~ {
-    - Object[] buffer
-    + int capacity
-    + Object lock
-    - long writeSequence
-    - List~Reader~T~~ readers
-    + RingBuffer(int capacity)
-    + void write(T item)
-    + Reader~T~ createReader()
-    + long oldestAvailableSeqUnsafe()
-    + long writeSeqUnsafe()
-    + T getAtSeqUnsafe(long sequence)
-    + String debugRing()
-  }
+Responsibilities:
+- Maintains its own `nextSeqToRead`
+- Reads elements without affecting other readers
+- Handles overwritten data if the reader becomes too slow
+- Can run as a thread (`Runnable`)
 
-  class Reader~T~ {
-    - RingBuffer~T~ buffer
-    - String name
-    - long delayMs
-    - long nextSeqToRead
-    + Reader(RingBuffer~T~ buffer, long startSeq, String name, long delayMs)
-    + Optional~T~ read()
-    + long position()
-    + int ringIndex()
-    + void run()
-  }
+Main methods:
+- `read()`
+- `position()`
+- `run()`
 
-  class Writer {
-    - RingBuffer~Integer~ buffer
-    - long delayMs
-    - long counter
-    + Writer(RingBuffer~Integer~ buffer, long delayMs)
-    + void run()
-  }
+---
 
-  class Main {
-    + static void main(String[] args)
-  }
+### `Writer`
+Represents the **single producer** of the system.
 
-  class ReaderStart {
-    <<enumeration>>
-    FROM_NOW
-    FROM_OLDEST_AVAILABLE
-  }
+Responsibilities:
+- Continuously writes values into the ring buffer
+- Demonstrates producer behavior
+- Runs as a thread (`Runnable`)
 
-  RingBuffer~T~ "1" --> "*" Reader~T~ : creates/holds
-  Writer --> RingBuffer~Integer~ : writes to
-  Main --> RingBuffer~String~ : demo
-  Main --> Reader~String~ : demo reads
+---
 
+### `Main`
+Used to **test and demonstrate** the ring buffer behavior.
+
+It:
+- Creates a ring buffer
+- Creates multiple readers
+- Writes several elements
+- Shows that readers consume data independently.
+
+---
+
+## How to Run the Project
+
+### 1. Compile the Java files
+
+From the project root directory run:
+
+```bash
+javac ringbuffer/*.java
