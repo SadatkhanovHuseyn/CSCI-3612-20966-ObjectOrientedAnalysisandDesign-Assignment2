@@ -4,13 +4,11 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RingBuffer<T> {
-
     private final Object[] buffer;
-    private final int capacity;
-
+    public final int capacity;
+    public final Object lock = new Object(); // Added missing lock
     private long writeSequence = 0;
-
-    private final List<RingBufferReader<T>> readers = new ArrayList<>();
+    private final List<Reader<T>> readers = new ArrayList<>(); // Changed name
 
     public RingBuffer(int capacity) {
         this.capacity = capacity;
@@ -23,31 +21,27 @@ public class RingBuffer<T> {
         writeSequence++;
     }
 
-    public synchronized RingBufferReader<T> createReader() {
-        RingBufferReader<T> reader = new RingBufferReader<>(this);
+    public synchronized Reader<T> createReader() {
+        // Updated to match Reader.java constructor: (buffer, startSeq, name, delay)
+        Reader<T> reader = new Reader<>(this, 0, "Reader-" + readers.size(), 100);
         readers.add(reader);
         return reader;
     }
 
-    protected synchronized T read(long sequence) {
-        if (sequence < writeSequence - capacity) {
-            return null; // Data overwritten
-        }
-
-        if (sequence >= writeSequence) {
-            return null; // Nothing new
-        }
-
-        long index = sequence % capacity;
-        return (T) buffer[(int) index];
+    // Missing methods required by Reader.java
+    public long oldestAvailableSeqUnsafe() {
+        return Math.max(0, writeSequence - capacity);
     }
 
-    protected synchronized long getWriteSequence() {
+    public long writeSeqUnsafe() {
         return writeSequence;
     }
 
-    protected int getCapacity() {
-        return capacity;
+    public T getAtSeqUnsafe(long sequence) {
+        return (T) buffer[(int) (sequence % capacity)];
+    }
+
+    public String debugRing() {
+        return "Buffer Status: " + writeSequence + " items written";
     }
 }
-
