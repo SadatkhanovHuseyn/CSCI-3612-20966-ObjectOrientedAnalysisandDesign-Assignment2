@@ -81,3 +81,9 @@ From the project root directory run:
 
 ```bash
 javac ringbuffer/*.java
+## 2. Run the Application
+
+After successfully compiling the Java files, run the main program:
+
+```bash
+java ringbuffer.Main
