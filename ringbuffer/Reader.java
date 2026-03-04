@@ -7,10 +7,9 @@ public final class Reader<T> implements Runnable {
     private final RingBuffer<T> buffer;
     private final String name;
     private final long delayMs;
-
     private long nextSeqToRead;
 
-    Reader(RingBuffer<T> buffer, long startSeq, String name, long delayMs) {
+    public Reader(RingBuffer<T> buffer, long startSeq, String name, long delayMs) {
         this.buffer = buffer;
         this.nextSeqToRead = startSeq;
         this.name = name;
@@ -22,7 +21,6 @@ public final class Reader<T> implements Runnable {
             long oldestAvailable = buffer.oldestAvailableSeqUnsafe();
             long writeSeq = buffer.writeSeqUnsafe();
 
-            // If this reader is too slow, it missed overwritten items -> skip
             if (nextSeqToRead < oldestAvailable) {
                 nextSeqToRead = oldestAvailable;
             }
@@ -43,28 +41,26 @@ public final class Reader<T> implements Runnable {
         }
     }
 
-    @Override
-    public void run() {
-        while (!Thread.currentThread().isInterrupted()) {
-            Optional<T> v = read();
-            v.ifPresent(val ->
-                System.out.println("[" + name + "] read=" + val + " pos=" + ringIndex() + " | " + buffer.debugRing())
-            );
-            sleep(delayMs);
+    // FIXED: Accessing the variable 'capacity' instead of calling a method 'capacity()'
+    public int ringIndex() {
+        synchronized (buffer.lock) {
+            return (int) (nextSeqToRead % buffer.capacity);
         }
     }
 
-    private static void sleep(long ms) {
-        try { Thread.sleep(ms); } catch (InterruptedException e) {
+    @Override
+    public void run() {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                Optional<T> item = read();
+                if (item.isPresent()) {
+                    T val = item.get();
+                    System.out.println("[" + name + "] read=" + val + " pos=" + ringIndex() + " | " + buffer.debugRing());
+                }
+                Thread.sleep(delayMs);
+            }
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
-    public int ringIndex() {
-    synchronized (buffer.lock) {
-        return (int) (nextSeqToRead % buffer.capacity());
-        }
-    }
 }
-
-
-
