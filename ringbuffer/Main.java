@@ -1,6 +1,6 @@
 package ringbuffer;
 
-public class Main :{
+public class Main {
     public static void main(String[] args) {
 
         RingBuffer<String> buffer = new RingBuffer<>(5);
@@ -23,4 +23,5 @@ public class Main :{
         System.out.println("Reader2: " + reader2.read());
     }
 }
+
 
